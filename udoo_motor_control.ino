@@ -7,20 +7,18 @@ ros::NodeHandle nh;
 int sentSpeed;
 float rec;
 int spd;
-//std_msgs::Float64 linearx;
+int turnAmount;
 
 void velocityMessageHandler(const geometry_msgs::Twist& cmd_vel) {
-  
-  //PID_target = 128;
-  rec = cmd_vel.linear.x - 1.0;
-  PID_target = convertSpeed(cmd_vel.linear.x);
-  sentSpeed = PID_target;
+  PID_motor1_target = cmd_vel.linear.x; // motor 1 target velocity
+  turnAmount = cmd_vel.angular.z; //set turn amount from angular z
 }
 
 ros::Subscriber<geometry_msgs::Twist> velocitySubscription("cmd_vel", velocityMessageHandler);
 
 geometry_msgs::Twist reported_velocity;
 ros::Publisher velocityReporter("velocity_reporter", &reported_velocity);
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -29,45 +27,60 @@ void setup() {
   // Begin serial and serial 1, which is how we are talking to the motor driver
   Serial1.begin(9600);
 
-  // turn the PID on
-  speedPID.SetMode(AUTOMATIC);
-  speedPID.SetOutputLimits(PID_output_lower, PID_output_upper);
-  speedPID.SetSampleTime(20);
-  
+  // turn the PID for motor 1 on
+  motor1PID.SetMode(AUTOMATIC);
+  motor1PID.SetOutputLimits(PID_output_lower, PID_output_upper);
+  motor1PID.SetSampleTime(20);
+
+  // turn the PID for motor 2 on
+  motor2PID.SetMode(AUTOMATIC);
+  motor2PID.SetOutputLimits(PID_output_lower, PID_output_upper);
+  motor2PID.SetSampleTime(20);
+
   // ros stuff
   nh.initNode();
   nh.advertise(velocityReporter);
   nh.subscribe(velocitySubscription);
+
   // Set baud rate to handle Twist messages
   nh.getHardware()->setBaud(115200);
-  
-  setSpeedBoth(128);
 }
 
 
 void loop() {
   // The target speed is set in the subscriber callback
-  
-  // Compute the desired output speed to be sent to the motors
-  speedPID.Compute();
-  // get the speed from the encoders
-  spd = getSpeed(1);
+
+  // get the speed of the motors
+  motor1_speed = getSpeed(1);
+  motor2_speed = getSpeed(2);
+
   // Set the PID input to the speed gotten from the encoders
-  PID_input = spd;
-  
-//  Serial.println(spd);
-  
+  PID_motor1_input = motor1_speed;
+  PID_motor2_input = motor2_speed;
+
+  // Compute the desired output speed to be sent to the motors
+  motor1PID.Compute();
+  motor2PID.Compute();
+
   // Set the speed of the motors to the PID controller output
-  setSpeedBoth(PID_output);
-//  setSpeedBoth(sentSpeed);
+  setSpeedBoth(PID_motor1_target);
   
-  // Report the velocity on the ROS publisher
-  reported_velocity.linear.x = spd;
-  reported_velocity.linear.y = PID_output;
-  reported_velocity.linear.z = sentSpeed;
-  reported_velocity.angular.x = rec;
-  //reported_velocity.linear.x = sentSpeed;
+  //Set turn
+  turn(turnAmount);
+  
+
+  // Set values to be reported by ROS publisher
+  reported_velocity.linear.x = motor1_speed;
+  reported_velocity.linear.y = motor2_speed;
+  reported_velocity.linear.z = currentMode;
+
+  reported_velocity.angular.x = PID_motor1_output;
+  reported_velocity.angular.y = PID_motor2_output;
+
+  // Publish the reported velocity
   velocityReporter.publish(&reported_velocity);
+
+  // They spinnin
   nh.spinOnce();
   delay(20);
 }

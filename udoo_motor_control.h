@@ -11,14 +11,25 @@
 int PID_output_lower = 0;
 int PID_output_upper = 255;
 
-double PID_input = 128;
-double PID_output = 128;
-double PID_target = 128;
+double PID_motor1_input = 128;
+double PID_motor1_output = 128;
+double PID_motor1_target = 128;
+
+double PID_motor2_input = 128;
+double PID_motor2_output = 128;
+double PID_motor2_target = 128;
+
 double Kp = 0.1;
 double Ki = 2.0;
 double Kd = 0.01;
-PID speedPID(&PID_input, &PID_output, &PID_target, Kp, Ki, Kd, DIRECT);
 
+PID motor1PID(&PID_motor1_input, &PID_motor1_output, &PID_motor1_target, Kp, Ki, Kd, DIRECT);
+PID motor2PID(&PID_motor2_input, &PID_motor2_output, &PID_motor2_target, Kp, Ki, Kd, DIRECT);
+
+int motor1_speed;
+int motor2_speed;
+
+int currentMode;
 
 // Contains the serial output
 char serial1_buffer[SERIAL_BUFFER_LEN];
